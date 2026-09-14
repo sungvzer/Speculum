@@ -1,0 +1,3 @@
+How to play:
+Use the VR controllers to move around in the room (the right controller stick will teleport you, the left one will make you walk). You can look around the room using your VR headset.
+Look at your controllers to see the button mapping diagram. TODO THIS NEEDS TO BE DONE.

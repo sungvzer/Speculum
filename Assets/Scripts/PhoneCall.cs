@@ -1,10 +1,11 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.Events;
 
 [RequireComponent(typeof(AudioSource))]
-public class AudioLoopWithDelay : MonoBehaviour
+public class PhoneCall : MonoBehaviour
 {
-    [Header("--- INITIAL DELAY ---")]
+    [Header("INITIAL DELAY")]
     [Tooltip("Enable random start delay, overriding 'First Delay'")]
     public bool randomizeStartTime = false;
 
@@ -18,7 +19,7 @@ public class AudioLoopWithDelay : MonoBehaviour
     [Min(0f)] public float randomStartTimeMaxSeconds = 0.0f;
 
 
-    [Header("--- LOOP DELAY ---")]
+    [Header("LOOP DELAY")]
     [Tooltip("Enable random pause between loops, overriding 'Pause Delay'")]
     public bool randomizePauseDelay = false;
 
@@ -32,11 +33,28 @@ public class AudioLoopWithDelay : MonoBehaviour
     [Min(0f)] public float randomPauseDelayMaxSeconds = 0.0f;
 
 
+    [Header("RESPONSE AUDIO")]
+    public AudioClip responseAudioClip;
+
+
+    [Header("EVENTS")]
+    public UnityEvent OnCallStarted;
+
+    public UnityEvent OnCallEnded;
+
+
     private AudioSource audioSource;
+    private AudioClip originalRingtoneClip;
+    private Coroutine loopCoroutine;
 
     private void Awake()
     {
         audioSource = GetComponent<AudioSource>();
+
+        if (audioSource != null)
+        {
+            originalRingtoneClip = audioSource.clip;
+        }
 
         if (randomizeStartTime)
         {
@@ -54,11 +72,13 @@ public class AudioLoopWithDelay : MonoBehaviour
     private void Start()
     {
         audioSource.loop = false;
-        StartCoroutine(PlayAudioLoop());
+        loopCoroutine = StartCoroutine(PlayAudioLoop());
     }
 
     private IEnumerator PlayAudioLoop()
     {
+        audioSource.clip = originalRingtoneClip;
+
         if (randomizeStartTime)
         {
             float randomDelay = Random.Range(randomStartTimeMinSeconds, randomStartTimeMaxSeconds);
@@ -72,10 +92,12 @@ public class AudioLoopWithDelay : MonoBehaviour
 
         while (true)
         {
+            OnCallStarted?.Invoke();
             audioSource.Play();
 
-            // Wait for the exact length of the audio clip
             yield return new WaitForSeconds(audioSource.clip.length);
+
+            OnCallEnded?.Invoke();
 
             if (randomizePauseDelay)
             {
@@ -87,5 +109,39 @@ public class AudioLoopWithDelay : MonoBehaviour
                 yield return new WaitForSeconds(pauseDelay);
             }
         }
+    }
+
+    public void AnswerCall()
+    {
+        if (loopCoroutine != null)
+        {
+            StopCoroutine(loopCoroutine);
+        }
+
+        if (audioSource.isPlaying)
+        {
+            audioSource.Stop();
+        }
+
+        OnCallEnded?.Invoke();
+
+        if (responseAudioClip != null)
+        {
+            loopCoroutine = StartCoroutine(PlayResponseAndRestartLoop());
+        }
+        else
+        {
+            loopCoroutine = StartCoroutine(PlayAudioLoop());
+        }
+    }
+
+    private IEnumerator PlayResponseAndRestartLoop()
+    {
+        audioSource.clip = responseAudioClip;
+        audioSource.Play();
+
+        yield return new WaitForSeconds(audioSource.clip.length);
+
+        loopCoroutine = StartCoroutine(PlayAudioLoop());
     }
 }

@@ -7,6 +7,7 @@ public class MenuObject3D : MonoBehaviour, IPointerClickHandler, IPointerEnterHa
 {
     [Header("Interaction Settings")]
     public UnityEvent onClickAction;
+    public bool disabledOnAwake = false;
 
     [Tooltip("The tooltip label to show when hovering over the object.")]
     public GameObject tooltipLabel;
@@ -20,22 +21,51 @@ public class MenuObject3D : MonoBehaviour, IPointerClickHandler, IPointerEnterHa
     private Vector3 originalPosition;
     private Transform mainCamera;
 
+    void OnDisable()
+    {
+        transform.localScale = originalScale;
+        transform.position = originalPosition;
+
+        if (tooltipLabel != null) tooltipLabel.SetActive(false);
+    }
+
+    void OnEnable()
+    {
+        if (tooltipLabel != null && tooltipLabel.activeInHierarchy && mainCamera != null)
+        {
+            tooltipLabel.transform.forward = mainCamera.forward;
+        }
+    }
+
     void LateUpdate()
     {
         tooltipLabel.transform.forward = mainCamera.forward;
     }
 
-    void Start()
+    void Awake()
     {
         originalScale = transform.localScale;
         originalPosition = transform.position;
+
+        if (disabledOnAwake)
+        {
+            enabled = false;
+            disabledOnAwake = false;
+        }
+    }
+
+    void Start()
+    {
+        if (mainCamera == null && Camera.main != null)
+        {
+            mainCamera = Camera.main.transform;
+        }
 
         if (tooltipLabel != null)
         {
             tooltipLabel.SetActive(false);
         }
 
-        if (mainCamera == null) mainCamera = Camera.main.transform;
     }
     void Update()
     {
